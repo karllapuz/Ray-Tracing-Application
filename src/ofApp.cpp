@@ -136,7 +136,7 @@ void ofApp::rayTrace(){
                     if (distance < closestObjDistance) {
                         closestObjDistance = distance;
                         colorToDraw = scene[k]->diffuseColor;
-                        colorToDraw = ambient(colorToDraw, ambientPercent) + lambert(pt, normal, colorToDraw) + phong(pt, normal, colorToDraw, scene[k]->specularColor, phongExponent);
+                        colorToDraw = ambient(colorToDraw, ambientPercent) + phong(pt, normal, colorToDraw, scene[k]->specularColor, phongExponent);
                     }
                 }
             }
@@ -146,6 +146,14 @@ void ofApp::rayTrace(){
     image.update();
     image.save("RayTracing.jpg", OF_IMAGE_QUALITY_HIGH);
     
+}
+
+bool ofApp::inShadow (const Ray &ray) {
+    glm::vec3 pt, normal;
+    for (int i = 0; i < scene.size() - lights.size(); i++) {
+        if (scene[i]->intersect(ray, pt, normal)) return true;
+    }
+    return false;
 }
 
 void ofApp::drawGrid() {
@@ -165,14 +173,14 @@ ofColor ofApp::ambient(const ofColor diffuse, float percentage) {
     return diffuse * percentage;
 }
 
-ofColor ofApp::lambert(const glm::vec3 &p, const glm::vec3 &norm, const ofColor diffuse) {
-    ofColor diffusedColor = ofColor::black;
-    for (int i = 0; i < lights.size(); i++) {
-        Light light = lights[i];
-        diffusedColor += max(float(0.0), glm::dot(norm, glm::normalize(light.position - p))) * lightIntensity * diffuse;
-    }
-    return diffusedColor;
-}
+//ofColor ofApp::lambert(const glm::vec3 &p, const glm::vec3 &norm, const ofColor diffuse) {
+//    ofColor diffusedColor = ofColor::black;
+//    for (int i = 0; i < lights.size(); i++) {
+//        Light light = lights[i];
+//        diffusedColor += max(float(0.0), glm::dot(norm, glm::normalize(light.position - p))) * lightIntensity * diffuse;
+//    }
+//    return diffusedColor;
+//}
 
 ofColor ofApp::phong(const glm::vec3 &p, const glm::vec3 &norm, const ofColor diffuse, const ofColor specular, float power) {
     ofColor diffusedColor = ofColor::black;
@@ -180,9 +188,14 @@ ofColor ofApp::phong(const glm::vec3 &p, const glm::vec3 &norm, const ofColor di
         Light light = lights[i];
         glm::vec3 v = glm::normalize(renderCam.position - p);
         glm::vec3 l = glm::normalize(light.position - p);
+        float epsilon = 0.001;
+        glm::vec3 epsilonDistance = p + epsilon * l;
+        Ray lightRay = Ray(epsilonDistance, light.position);
         // Solve for the bisector
         glm::vec3 b = (v + l) / glm::length(v + l);
-        diffusedColor += specular * lightIntensity * glm::pow(glm::dot(norm, b), power);
+        ofColor lambert = max(float(0.0), glm::dot(norm, glm::normalize(light.position - p))) * lightIntensity * diffuse;
+        ofColor phong = specular * lightIntensity * glm::pow(glm::dot(norm, b), power);
+        if (!inShadow(lightRay)) diffusedColor += phong + lambert;
     }
     return diffusedColor;
 }
@@ -208,6 +221,15 @@ void ofApp::keyReleased(int key){
             break;
         case 'h':
             bHide = !bHide;
+            break;
+        case 'x':
+            rotateX = true;
+            break;
+        case 'y':
+            rotateY = true;
+            break;
+        case 'z':
+            rotateZ = true;
             break;
         case '1':
             theCam = &mainCam;
@@ -241,11 +263,101 @@ void ofApp::mouseMoved(int x, int y ){
 //--------------------------------------------------------------
 void ofApp::mouseDragged(int x, int y, int button){
     
+    if (objSelected() && bDrag) {
+        glm::vec3 point;
+        mouseToDragPlane(x, y, point);
+        if (rotateX) {
+            selected[0]->rotation += glm::vec3((point.x - lastPoint.x) * 20.0, 0, 0);
+        }
+        else if (rotateY) {
+            selected[0]->rotation += glm::vec3(0, (point.x - lastPoint.x) * 20.0, 0);
+        }
+        else if (rotateZ) {
+            selected[0]->rotation += glm::vec3(0, 0, (point.x - lastPoint.x) * 20.0);
+        }
+        else {
+            selected[0]->position += (point - lastPoint);
+            //            selected[0]->setPosition(point);
+        }
+        lastPoint = point;
+    }
+    
+}
+
+bool ofApp::mouseToDragPlane(int x, int y, glm::vec3 &point) {
+    glm::vec3 p = theCam->screenToWorld(glm::vec3(x, y, 0));
+    glm::vec3 d = p - theCam->getPosition();
+    glm::vec3 dn = glm::normalize(d);
+    
+    float dist;
+    glm::vec3 pos;
+    if (objSelected()) {
+        pos = selected[0]->position;
+    }
+    else pos = glm::vec3(0, 0, 0);
+    if (glm::intersectRayPlane(p, dn, pos, glm::normalize(theCam->getZAxis()), dist)) {
+        point = p + dn * dist;
+        return true;
+    }
+    return false;
 }
 
 //--------------------------------------------------------------
 void ofApp::mousePressed(int x, int y, int button){
     
+    // if we are moving the camera around, don't allow selection
+    //
+    if (mainCam.getMouseInputEnabled()) return;
+    
+    // clear selection list
+    //
+    selected.clear();
+    
+    //
+    // test if something selected
+    //
+    vector<SceneObject *> hits;
+    
+    glm::vec3 p = theCam->screenToWorld(glm::vec3(x, y, 0));
+    glm::vec3 d = p - theCam->getPosition();
+    glm::vec3 dn = glm::normalize(d);
+    
+    // check for selection of scene objects
+    //
+    for (int i = 0; i < scene.size(); i++) {
+        
+        glm::vec3 point, norm;
+        
+        //  We hit an object
+        //
+        if (scene[i]->intersect(Ray(p, dn), point, norm)) {
+            hits.push_back(scene[i]);
+        }
+    }
+    
+    
+    // if we selected more than one, pick nearest
+    //
+    SceneObject *selectedObj = NULL;
+    if (hits.size() > 0) {
+        selectedObj = hits[0];
+        float nearestDist = std::numeric_limits<float>::infinity();
+        for (int n = 0; n < hits.size(); n++) {
+            float dist = glm::length(hits[n]->position - theCam->getPosition());
+            if (dist < nearestDist) {
+                nearestDist = dist;
+                selectedObj = hits[n];
+            }
+        }
+    }
+    if (selectedObj) {
+        selected.push_back(selectedObj);
+        bDrag = true;
+        mouseToDragPlane(x, y, lastPoint);
+    }
+    else {
+        selected.clear();
+    }
 }
 
 //--------------------------------------------------------------

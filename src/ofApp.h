@@ -25,12 +25,15 @@ public:
     virtual bool intersect(const Ray &ray, glm::vec3 &point, glm::vec3 &normal) { cout << "SceneObject::intersect" << endl; return false; }
     
     // any data common to all scene objects goes here
-    glm::vec3 position = glm::vec3(0, 0, 0);
+    glm::vec3 position = glm::vec3(0, 0, 0);   // translate
+    glm::vec3 rotation = glm::vec3(0, 0, 0);   // rotate
+    glm::vec3 scale = glm::vec3(1, 1, 1);      // scale
     
     // material properties (we will ultimately replace this with a Material class - TBD)
     //
     ofColor diffuseColor = ofColor::grey;    // default colors - can be changed.
     ofColor specularColor = ofColor::lightGray;
+
 };
 
 class Light: public SceneObject {
@@ -186,8 +189,12 @@ public:
     void rayTrace();
     void drawGrid();
     void drawAxis(glm::vec3 position);
+    bool mouseToDragPlane(int x, int y, glm::vec3 &point);
+    bool objSelected() { return (selected.size() ? true : false ); };
+    void printChannels(SceneObject *);
     
-    ofColor lambert(const glm::vec3 &p, const glm::vec3 &norm, const ofColor diffuse);
+//    ofColor lambert(const glm::vec3 &p, const glm::vec3 &norm, const ofColor diffuse);
+    bool inShadow(const Ray &ray);
     ofColor phong(const glm::vec3 &p, const glm::vec3 &norm, const ofColor diffuse, const ofColor specular, float power);
     ofColor ambient(const ofColor diffuse, float percentage);
     
@@ -217,4 +224,13 @@ public:
     ofxFloatSlider lightIntensity;
     ofxIntSlider phongExponent;
     ofxPanel gui;
+    
+    // Translating an object
+    vector<SceneObject *> selected;
+    bool bDrag = false;
+    bool bAltKeyDown = false;
+    bool rotateX = false;
+    bool rotateY = false;
+    bool rotateZ = false;
+    glm::vec3 lastPoint;
 };
