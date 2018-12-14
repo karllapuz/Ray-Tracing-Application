@@ -52,8 +52,8 @@ void ofApp::setup(){
     
     // GUI Setup
     gui.setup();
-    gui.add(ambientPercent.setup("Ambient Percentage: ", 0.3, 0, 1));
-    gui.add(lightIntensity.setup("Light Intensity: ", 1, 0, 5));
+    gui.add(ambientPercent.setup("Ambient Percentage: ", 0.1, 0, 1));
+    gui.add(lightIntensity.setup("Light Intensity: ", 0.80, 0, 5));
     gui.add(phongExponent.setup("Phong Exponent: ", 10, 10, 1000));
     
     ofSetBackgroundColor(ofColor::black);
@@ -64,15 +64,15 @@ void ofApp::setup(){
     previewCam.setPosition(glm::vec3(0, 0, 10));
     theCam = &mainCam;
     
-    Light light1 = Light(glm::vec3(4, 0.5, 1), lightIntensity, ofColor::white);
-    Light light2 = Light(glm::vec3(-2, 4, 4), lightIntensity, ofColor::white);
+    Light * light1 = new Light(glm::vec3(4, 6, 4), lightIntensity, ofColor::white);
+    Light * light2 = new Light(glm::vec3(-4, 6, 4), lightIntensity, ofColor::white);
     
     scene.push_back(new Sphere(glm::vec3(-1, 0, 0), 2.0, ofColor::blue));
     scene.push_back(new Sphere(glm::vec3(1, 0, -4), 2.0, ofColor::lightGreen));
     scene.push_back(new Sphere(glm::vec3(0, 0, 2), 1.0, ofColor::red));
     scene.push_back(new Plane(glm::vec3(0, -2, 0), glm::vec3(0, 1, 0), ofColor::gray));
-    scene.push_back(new Light(glm::vec3(4, 0.5, 1), lightIntensity, ofColor::white));
-    scene.push_back(new Light(glm::vec3(-2, 4, 4), lightIntensity, ofColor::white));
+    scene.push_back(light1);
+    scene.push_back(light2);
     
     lights.push_back(light1);
     lights.push_back(light2);
@@ -94,7 +94,8 @@ void ofApp::draw(){
     
     for (int i = 0; i < scene.size(); i++) {
         SceneObject * obj = scene[i];
-        ofSetColor(obj->diffuseColor);
+        if (objSelected() && obj == selected[0]) ofSetColor(ofColor::white);
+        else ofSetColor(obj->diffuseColor);
         obj->draw();
     }
     
@@ -114,7 +115,7 @@ void ofApp::draw(){
     
 }
 
-void ofApp::rayTrace(){
+void ofApp::render(){
     // Set width and height of the image based on the aspect ratio
     image.allocate(imageWidth, imageHeight, OF_IMAGE_COLOR);
     
@@ -122,30 +123,43 @@ void ofApp::rayTrace(){
         for (float j = 0; j < image.getHeight(); j++) {
             float u = (i + 0.5f) / image.getWidth();
             float v = (image.getHeight() - j - 1 + 0.5f) / image.getHeight();
-            Ray currentRay = renderCam.getRay(u, v);
             
-            float closestObjDistance = std::numeric_limits<float>::infinity();
-            ofColor colorToDraw = ofColor::black; // default black for when it does not hit
+            ofColor sum = ofColor::black;
+            
+            
+            Ray currentRay = renderCam.getRay(u, v);
+    
+            ofColor colorToDraw = rayTrace(currentRay); // default black for when it does not hit
+    
             // currentRay.draw(150);
-            glm::vec3 pt, normal;
-            for (int k = 0; k < scene.size() - lights.size(); k++) {
-                SceneObject* obj = scene[k];
-                bool hit = obj->intersect(currentRay, pt, normal);
-                if (hit) {
-                    float distance = glm::length(pt - renderCam.position);
-                    if (distance < closestObjDistance) {
-                        closestObjDistance = distance;
-                        colorToDraw = scene[k]->diffuseColor;
-                        colorToDraw = ambient(colorToDraw, ambientPercent) + phong(pt, normal, colorToDraw, scene[k]->specularColor, phongExponent);
-                    }
-                }
-            }
+            
             image.setColor(i, j, colorToDraw);
+            
+            
         }
     }
     image.update();
     image.save("RayTracing.jpg", OF_IMAGE_QUALITY_HIGH);
     
+}
+
+ofColor ofApp::rayTrace(const Ray &ray) {
+    ofColor colorToDraw = ofColor::black; // default black for when it does not hit
+    float closestObjDistance = std::numeric_limits<float>::infinity();
+    glm::vec3 pt, normal;
+    for (int i = 0; i < scene.size() - lights.size(); i++) {
+        SceneObject* obj = scene[i];
+        bool hit = obj->intersect(ray, pt, normal);
+        if (hit) {
+            float distance = glm::length(pt - renderCam.position);
+            if (distance < closestObjDistance) {
+                closestObjDistance = distance;
+                colorToDraw = scene[i]->diffuseColor;
+                colorToDraw = ambient(colorToDraw, ambientPercent) + phong(pt, normal, colorToDraw, scene[i]->specularColor, phongExponent);
+            }
+        }
+    }
+    return colorToDraw;
 }
 
 bool ofApp::inShadow (const Ray &ray) {
@@ -173,29 +187,24 @@ ofColor ofApp::ambient(const ofColor diffuse, float percentage) {
     return diffuse * percentage;
 }
 
-//ofColor ofApp::lambert(const glm::vec3 &p, const glm::vec3 &norm, const ofColor diffuse) {
-//    ofColor diffusedColor = ofColor::black;
-//    for (int i = 0; i < lights.size(); i++) {
-//        Light light = lights[i];
-//        diffusedColor += max(float(0.0), glm::dot(norm, glm::normalize(light.position - p))) * lightIntensity * diffuse;
-//    }
-//    return diffusedColor;
-//}
-
 ofColor ofApp::phong(const glm::vec3 &p, const glm::vec3 &norm, const ofColor diffuse, const ofColor specular, float power) {
     ofColor diffusedColor = ofColor::black;
     for (int i = 0; i < lights.size(); i++) {
-        Light light = lights[i];
+        Light * light = lights[i];
         glm::vec3 v = glm::normalize(renderCam.position - p);
-        glm::vec3 l = glm::normalize(light.position - p);
+        glm::vec3 l = glm::normalize(light->position - p);
         float epsilon = 0.001;
         glm::vec3 epsilonDistance = p + epsilon * l;
-        Ray lightRay = Ray(epsilonDistance, light.position);
-        // Solve for the bisector
-        glm::vec3 b = (v + l) / glm::length(v + l);
-        ofColor lambert = max(float(0.0), glm::dot(norm, glm::normalize(light.position - p))) * lightIntensity * diffuse;
-        ofColor phong = specular * lightIntensity * glm::pow(glm::dot(norm, b), power);
-        if (!inShadow(lightRay)) diffusedColor += phong + lambert;
+        Ray lightRay = Ray(epsilonDistance, l);
+
+        // Check whether the point is in shadow or not
+        if (!inShadow(lightRay)) {
+            // Solve for the bisector
+            glm::vec3 b = (v + l) / glm::length(v + l);
+            ofColor lambert = max(float(0.0), glm::dot(norm, l)) * lightIntensity * diffuse;
+            ofColor phong = specular * lightIntensity * glm::pow(glm::dot(norm, b), power);
+            diffusedColor += phong + lambert;
+        }
     }
     return diffusedColor;
 }
@@ -210,7 +219,10 @@ void ofApp::keyReleased(int key){
     switch (key) {
         case 'C':
         case 'c':
-            if (mainCam.getMouseInputEnabled()) mainCam.disableMouseInput();
+            if (mainCam.getMouseInputEnabled()) {
+                selected.clear();
+                mainCam.disableMouseInput();
+            }
             else mainCam.enableMouseInput();
             break;
         case 'F':
@@ -250,7 +262,7 @@ void ofApp::keyReleased(int key){
             break;
         case 'R':
         case 'r':
-            rayTrace();
+            render();
             break;
     }
 }
@@ -277,7 +289,6 @@ void ofApp::mouseDragged(int x, int y, int button){
         }
         else {
             selected[0]->position += (point - lastPoint);
-            //            selected[0]->setPosition(point);
         }
         lastPoint = point;
     }
@@ -330,7 +341,7 @@ void ofApp::mousePressed(int x, int y, int button){
         
         //  We hit an object
         //
-        if (scene[i]->intersect(Ray(p, dn), point, norm)) {
+        if (scene[i]->intersect(Ray(p, dn), point, norm) && scene[i]->isSelectable) {
             hits.push_back(scene[i]);
         }
     }

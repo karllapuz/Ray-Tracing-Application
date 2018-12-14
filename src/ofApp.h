@@ -27,29 +27,59 @@ public:
     // any data common to all scene objects goes here
     glm::vec3 position = glm::vec3(0, 0, 0);   // translate
     glm::vec3 rotation = glm::vec3(0, 0, 0);   // rotate
-    glm::vec3 scale = glm::vec3(1, 1, 1);      // scale
     
     // material properties (we will ultimately replace this with a Material class - TBD)
     //
     ofColor diffuseColor = ofColor::grey;    // default colors - can be changed.
     ofColor specularColor = ofColor::lightGray;
+    
+    bool isSelectable = true;
 
 };
 
 class Light: public SceneObject {
 public:
     Light(glm::vec3 p, float intensity, ofColor diffuse = ofColor::lightGray) { position = p; diffuseColor = diffuse; this->intensity = intensity; }
-    Light() {}
+
     bool intersect(const Ray &ray, glm::vec3 &point, glm::vec3 &normal) {
         return (glm::intersectRaySphere(ray.p, ray.d, position, radius, point, normal));
     }
-    void draw() {
+    void draw()
+    {
         ofDrawSphere(position, radius);
     }
+    
+//    virtual bool isIlluminated() = 0;
     
     float radius = 0.1;
     float intensity = 1.0;
 };
+
+//class PointLight: public Light {
+//public:
+//    PointLight(glm::vec3 p, float intensity, ofColor diffuse = ofColor::lightGray) { position = p; diffuseColor = diffuse; this->intensity = intensity; }
+//    PointLight() {
+//
+//    }
+//    void draw()
+//    {
+//        ofDrawSphere(position, radius);
+//    }
+//    bool isIlluminated() { return true; }
+//};
+//
+//class SpotLight: public Light {
+//public:
+//    SpotLight();
+//    void draw()
+//    {
+//        ofSetColor(ofColor::coral);
+//        ofDrawSphere(position, radius);
+//    }
+//    bool isIlluminated() {
+//
+//    }
+//};
 
 //  General purpose sphere  (assume parametric)
 //
@@ -85,6 +115,7 @@ public:
         height = h;
         diffuseColor = diffuse;
         plane.rotateDeg(90, 1, 0, 0);
+        isSelectable = false;
     }
     Plane() { }
     glm::vec3 normal = glm::vec3(0, 1, 0);
@@ -99,6 +130,7 @@ public:
     ofPlanePrimitive plane;
     float width = 20;
     float height = 20;
+    
 };
 
 // view plane for render camera
@@ -186,7 +218,8 @@ public:
     void windowResized(int w, int h);
     void dragEvent(ofDragInfo dragInfo);
     void gotMessage(ofMessage msg);
-    void rayTrace();
+    void render();
+    ofColor rayTrace(const Ray &ray);
     void drawGrid();
     void drawAxis(glm::vec3 position);
     bool mouseToDragPlane(int x, int y, glm::vec3 &point);
@@ -214,7 +247,7 @@ public:
     ofImage image;
     
     vector<SceneObject *> scene;
-    vector<Light> lights;
+    vector<Light *> lights;
     
     int imageWidth = 600;
     int imageHeight = 400;
