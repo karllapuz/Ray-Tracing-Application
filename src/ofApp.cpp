@@ -104,7 +104,7 @@ void ofApp::draw(){
     
     ofSetColor(ofColor::white);
     renderCam.draw();
-    // rayTrace();
+    // render();
     
     if (bShowGrid) { drawGrid(); }
     if (bShowImage) {
@@ -121,21 +121,34 @@ void ofApp::render(){
     
     for (float i = 0; i < image.getWidth(); i++) {
         for (float j = 0; j < image.getHeight(); j++) {
-            float u = (i + 0.5f) / image.getWidth();
-            float v = (image.getHeight() - j - 1 + 0.5f) / image.getHeight();
+            float iNudge = i + 0.5f;
+            float jNudge = j + 0.5f;
             
-            ofColor sum = ofColor::black;
+            float u = iNudge / image.getWidth();
+            float v = (image.getHeight() - jNudge) / image.getHeight();
+            
+            // Use a 4x4 grid for anti aliasing
+            int nSquares = 2;
+            ofColor colorSum = ofColor::black;
+            for (float x = -(nSquares - 1.0f) / 2.0f; x <= (nSquares - 1.0f) / 2.0f; x++) {
+                for (float y = -(nSquares - 1.0f) / 2.0f; y <= (nSquares - 1.0f) / 2.0f; y++) {
+                    // cout << u << x << image.getWidth() << endl;
+                    float uTemp = u + (x / (image.getWidth() * nSquares));
+                    float vTemp = v + (y / (image.getHeight() * nSquares));
+                    // cout << "(" << uTemp << ", " << vTemp << ")" << endl;
+                    Ray currentRay = renderCam.getRay(uTemp, vTemp);
+                    // currentRay.draw(150);
+                    colorSum += (rayTrace(currentRay) / (nSquares * nSquares));
+                }
+            }
+            // colorSum = colorSum / (nSquares * nSquares);
+            image.setColor(i, j, colorSum);
             
             
-            Ray currentRay = renderCam.getRay(u, v);
-    
-            ofColor colorToDraw = rayTrace(currentRay); // default black for when it does not hit
-    
-            // currentRay.draw(150);
-            
-            image.setColor(i, j, colorToDraw);
-            
-            
+//            Ray currentRay = renderCam.getRay(u, v);
+//            // currentRay.draw(150);
+//            ofColor colorToDraw = rayTrace(currentRay); // default black for when it does not hit
+//            image.setColor(i, j, colorToDraw);
         }
     }
     image.update();
