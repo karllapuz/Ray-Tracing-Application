@@ -226,6 +226,8 @@ public:
     bool mouseToDragPlane(int x, int y, glm::vec3 &point);
     bool objSelected() { return (selected.size() ? true : false ); };
     void printChannels(SceneObject *);
+    glm::vec3 linearAnimation(glm::vec3 key1, glm::vec3 key2);
+    glm::vec3 easeInOutAnimation(glm::vec3 key1, glm::vec3 key2);
     
 //    ofColor lambert(const glm::vec3 &p, const glm::vec3 &norm, const ofColor diffuse);
     bool inShadow(const Ray &ray);
@@ -250,13 +252,14 @@ public:
     vector<SceneObject *> scene;
     vector<Light *> lights;
     
-    int imageWidth = 600;
-    int imageHeight = 400;
+    int imageWidth = 1200;
+    int imageHeight = 800;
     
     // GUI
     ofxFloatSlider ambientPercent;
     ofxFloatSlider lightIntensity;
     ofxIntSlider phongExponent;
+    ofxIntSlider spotlightAngle;
     ofxPanel gui;
     
     // Translating an object
@@ -268,5 +271,16 @@ public:
     bool rotateZ = false;
     glm::vec3 lastPoint;
     
+    // KEYFRAME ANIMATION
+    bool bPlayback = false;
+    int currentFrame = 1;
+    int frameMax = 200;
+    int frameMin = 1;
+    glm::vec3 key1;
+    glm::vec3 key2;
+    glm::vec3 key3;
+    glm::vec3 key4;
+    glm::vec3 key5;
+    glm::vec3 key6;
     
 };

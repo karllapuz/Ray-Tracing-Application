@@ -60,9 +60,10 @@ void ofApp::setup(){
     
     // GUI Setup
     gui.setup();
-    gui.add(ambientPercent.setup("Ambient Percentage: ", 0.1, 0, 1));
-    gui.add(lightIntensity.setup("Light Intensity: ", 0.80, 0, 5));
+    gui.add(ambientPercent.setup("Ambient Percentage: ", 0.08, 0, 1));
+    gui.add(lightIntensity.setup("Light Intensity: ", 0.60, 0, 5));
     gui.add(phongExponent.setup("Phong Exponent: ", 10, 10, 1000));
+    gui.add(spotlightAngle.setup("Spotlight Angle: ", 45, 1, 89));
     
     ofSetBackgroundColor(ofColor::black);
     mainCam.setDistance(30);
@@ -74,25 +75,71 @@ void ofApp::setup(){
     
     Light * light1 = new PointLight(glm::vec3(4, 6, 4), lightIntensity, ofColor::white);
     Light * light2 = new PointLight(glm::vec3(-4, 6, 4), lightIntensity, ofColor::white);
-    Light * spotlight = new SpotLight(glm::vec3(0, 6, 0), lightIntensity, glm::vec3(0, -1, 0), 45.0f, ofColor::white);
+    Light * spotlight = new SpotLight(glm::vec3(0, 6, 0), lightIntensity, glm::vec3(0, -1, 0), spotlightAngle, ofColor::white);
     
     scene.push_back(new Sphere(glm::vec3(-1, 0, 0), 2.0, ofColor::blue));
     scene.push_back(new Sphere(glm::vec3(1, 0, -4), 2.0, ofColor::lightGreen));
     scene.push_back(new Sphere(glm::vec3(0, 0, 2), 1.0, ofColor::red));
     scene.push_back(new Plane(glm::vec3(0, -2, 0), glm::vec3(0, 1, 0), ofColor::gray));
-//    scene.push_back(light1);
-//    scene.push_back(light2);
-    scene.push_back(spotlight);
+    scene.push_back(light1);
+    scene.push_back(light2);
+//    scene.push_back(spotlight);
     
-//    lights.push_back(light1);
-//    lights.push_back(light2);
-    lights.push_back(spotlight);
+    lights.push_back(light1);
+    lights.push_back(light2);
+//    lights.push_back(spotlight);
+    
+    ofSetFrameRate(60);
+    key1 = glm::vec3(-8, 0, -8);
+    key2 = glm::vec3(-1, 0, 0);
+    
+    key3 = glm::vec3(8, 0, -8);
+    key4 = glm::vec3(1, 0, -4);
+    
+    key5 = glm::vec3(0, 8, 2);
+    key6 = glm::vec3(0, 0, 2);
 }
 
 //--------------------------------------------------------------
 void ofApp::update(){
     
+    if (bPlayback) {
+        currentFrame++;
+        if (currentFrame >= frameMax) currentFrame = frameMin;
+        // selected[0]->position = linearAnimation();
+        scene[0]->position = easeInOutAnimation(key1, key2);
+        scene[1]->position = easeInOutAnimation(key3, key4);
+        scene[2]->position = easeInOutAnimation(key5, key6);
+        render();
+    }
 }
+
+glm::vec3 ofApp::linearAnimation(glm::vec3 key1, glm::vec3 key2) {
+    float changeX = key2.x - key1.x;
+    float changeY = key2.y - key1.y;
+    float changeZ = key2.z - key1.z;
+    return glm::vec3(changeX * ((float)currentFrame/frameMax) + key1.x,
+                     changeY * ((float)currentFrame/frameMax) + key1.y,
+                     changeZ * ((float)currentFrame/frameMax) + key1.z);
+}
+
+glm::vec3 ofApp::easeInOutAnimation(glm::vec3 key1, glm::vec3 key2) {
+    float changeX = (key2.x - key1.x) / 2;
+    float changeY = (key2.y - key1.y) / 2;
+    float changeZ = (key2.z - key1.z) / 2;
+    float temp = currentFrame;
+    temp /= frameMax/2;
+    if (temp < 1) {
+        return glm::vec3((float)(changeX * temp * temp + key1.x),
+                         (float)(changeY * temp * temp + key1.y),
+                         (float)(changeZ * temp * temp + key1.z));
+    }
+    temp--;
+    return glm::vec3((float)(-changeX * (temp * (temp - 2) - 1) + key1.x),
+                     (float)(-changeY * (temp * (temp - 2) - 1) + key1.y),
+                     (float)(-changeZ * (temp * (temp - 2) - 1) + key1.z));
+}
+
 
 //--------------------------------------------------------------
 void ofApp::draw(){
@@ -163,7 +210,8 @@ void ofApp::render(){
         }
     }
     image.update();
-    image.save("RayTracing.jpg", OF_IMAGE_QUALITY_HIGH);
+    string fileName = "Spotlight.jpg";
+    image.save(fileName, OF_IMAGE_QUALITY_HIGH);
     
 }
 
@@ -249,7 +297,9 @@ void ofApp::keyReleased(int key){
             }
             else mainCam.enableMouseInput();
             break;
-        case 'F':
+        case ' ':
+            bPlayback = !bPlayback;
+            break;
         case 'b':
             break;
         case 'f':
