@@ -1,5 +1,13 @@
 #include "ofApp.h"
 
+bool SpotLight::isIlluminated(glm::vec3 lightDirection) {
+    
+    glm::vec3 spotDirection = glm::normalize(direction);
+    float pointAngle = glm::dot(spotDirection, -lightDirection);
+    if (pointAngle >= glm::radians(lightAngle)) return true;
+    return false;
+}
+
 // Intersect Ray with Plane  (wrapper on glm::intersect*
 //
 bool Plane::intersect(const Ray &ray, glm::vec3 & point, glm::vec3 & normalAtIntersect) {
@@ -64,18 +72,21 @@ void ofApp::setup(){
     previewCam.setPosition(glm::vec3(0, 0, 10));
     theCam = &mainCam;
     
-    Light * light1 = new Light(glm::vec3(4, 6, 4), lightIntensity, ofColor::white);
-    Light * light2 = new Light(glm::vec3(-4, 6, 4), lightIntensity, ofColor::white);
+    Light * light1 = new PointLight(glm::vec3(4, 6, 4), lightIntensity, ofColor::white);
+    Light * light2 = new PointLight(glm::vec3(-4, 6, 4), lightIntensity, ofColor::white);
+    Light * spotlight = new SpotLight(glm::vec3(0, 6, 0), lightIntensity, glm::vec3(0, -1, 0), 45.0f, ofColor::white);
     
     scene.push_back(new Sphere(glm::vec3(-1, 0, 0), 2.0, ofColor::blue));
     scene.push_back(new Sphere(glm::vec3(1, 0, -4), 2.0, ofColor::lightGreen));
     scene.push_back(new Sphere(glm::vec3(0, 0, 2), 1.0, ofColor::red));
     scene.push_back(new Plane(glm::vec3(0, -2, 0), glm::vec3(0, 1, 0), ofColor::gray));
-    scene.push_back(light1);
-    scene.push_back(light2);
+//    scene.push_back(light1);
+//    scene.push_back(light2);
+    scene.push_back(spotlight);
     
-    lights.push_back(light1);
-    lights.push_back(light2);
+//    lights.push_back(light1);
+//    lights.push_back(light2);
+    lights.push_back(spotlight);
 }
 
 //--------------------------------------------------------------
@@ -209,9 +220,9 @@ ofColor ofApp::phong(const glm::vec3 &p, const glm::vec3 &norm, const ofColor di
         float epsilon = 0.001;
         glm::vec3 epsilonDistance = p + epsilon * l;
         Ray lightRay = Ray(epsilonDistance, l);
-
-        // Check whether the point is in shadow or not
-        if (!inShadow(lightRay)) {
+        
+        // Check whether the point is in shadow or not and if it's illuminated by the type of light
+        if (!inShadow(lightRay) && light->isIlluminated(l)) {
             // Solve for the bisector
             glm::vec3 b = (v + l) / glm::length(v + l);
             ofColor lambert = max(float(0.0), glm::dot(norm, l)) * lightIntensity * diffuse;

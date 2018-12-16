@@ -39,7 +39,7 @@ public:
 
 class Light: public SceneObject {
 public:
-    Light(glm::vec3 p, float intensity, ofColor diffuse = ofColor::lightGray) { position = p; diffuseColor = diffuse; this->intensity = intensity; }
+//    Light(glm::vec3 p, float intensity, ofColor diffuse = ofColor::lightGray) { position = p; diffuseColor = diffuse; this->intensity = intensity; }
 
     bool intersect(const Ray &ray, glm::vec3 &point, glm::vec3 &normal) {
         return (glm::intersectRaySphere(ray.p, ray.d, position, radius, point, normal));
@@ -49,37 +49,38 @@ public:
         ofDrawSphere(position, radius);
     }
     
-//    virtual bool isIlluminated() = 0;
+    virtual bool isIlluminated(glm::vec3 lightDirection) = 0;
     
     float radius = 0.1;
     float intensity = 1.0;
 };
 
-//class PointLight: public Light {
-//public:
-//    PointLight(glm::vec3 p, float intensity, ofColor diffuse = ofColor::lightGray) { position = p; diffuseColor = diffuse; this->intensity = intensity; }
-//    PointLight() {
-//
-//    }
-//    void draw()
-//    {
-//        ofDrawSphere(position, radius);
-//    }
-//    bool isIlluminated() { return true; }
-//};
-//
-//class SpotLight: public Light {
-//public:
-//    SpotLight();
-//    void draw()
-//    {
-//        ofSetColor(ofColor::coral);
-//        ofDrawSphere(position, radius);
-//    }
-//    bool isIlluminated() {
-//
-//    }
-//};
+class PointLight: public Light {
+public:
+    PointLight(glm::vec3 p, float intensity, ofColor diffuse = ofColor::lightGray) { position = p; diffuseColor = diffuse; this->intensity = intensity; }
+    PointLight() { }
+    void draw()
+    {
+        ofDrawSphere(position, radius);
+    }
+    bool isIlluminated(glm::vec3 lightDirection) { return true; }
+};
+
+class SpotLight: public Light {
+public:
+    SpotLight(glm::vec3 p, float intensity, glm::vec3 spotDirection, float angle, ofColor diffuse = ofColor::lightGray) { position = p; diffuseColor = diffuse; direction = spotDirection; lightAngle = angle; this->intensity = intensity; }
+    void draw()
+    {
+        ofSetColor(ofColor::coral);
+        ofDrawSphere(position, radius);
+    }
+    bool isIlluminated(glm::vec3 lightDirection);
+    
+    glm::vec3 direction;
+    float lightAngle;
+    // float exponent;
+    
+};
 
 //  General purpose sphere  (assume parametric)
 //
@@ -266,4 +267,6 @@ public:
     bool rotateY = false;
     bool rotateZ = false;
     glm::vec3 lastPoint;
+    
+    
 };
