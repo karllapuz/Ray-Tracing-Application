@@ -34,7 +34,8 @@ public:
     ofColor specularColor = ofColor::lightGray;
     
     bool isSelectable = true;
-
+    bool isLight = false;
+    int index;
 };
 
 class Light: public SceneObject {
@@ -49,7 +50,7 @@ public:
         ofDrawSphere(position, radius);
     }
     
-    virtual bool isIlluminated(glm::vec3 lightDirection) = 0;
+    virtual bool isIlluminated(glm::vec3 lightDirection, int angle) = 0;
     
     float radius = 0.1;
     float intensity = 1.0;
@@ -57,27 +58,26 @@ public:
 
 class PointLight: public Light {
 public:
-    PointLight(glm::vec3 p, float intensity, ofColor diffuse = ofColor::lightGray) { position = p; diffuseColor = diffuse; this->intensity = intensity; }
+    PointLight(glm::vec3 p, float intensity, ofColor diffuse = ofColor::lightGray) { position = p; diffuseColor = diffuse; this->intensity = intensity; isLight = true; }
     PointLight() { }
     void draw()
     {
         ofDrawSphere(position, radius);
     }
-    bool isIlluminated(glm::vec3 lightDirection) { return true; }
+    bool isIlluminated(glm::vec3 lightDirection, int angle) { return true; }
 };
 
 class SpotLight: public Light {
 public:
-    SpotLight(glm::vec3 p, float intensity, glm::vec3 spotDirection, float angle, ofColor diffuse = ofColor::lightGray) { position = p; diffuseColor = diffuse; direction = spotDirection; lightAngle = angle; this->intensity = intensity; }
+    SpotLight(glm::vec3 p, float intensity, glm::vec3 spotDirection, float angle, ofColor diffuse = ofColor::lightGray) { position = p; diffuseColor = diffuse; direction = spotDirection; this->intensity = intensity; isLight = true; }
     void draw()
     {
         ofSetColor(ofColor::coral);
         ofDrawSphere(position, radius);
     }
-    bool isIlluminated(glm::vec3 lightDirection);
+    bool isIlluminated(glm::vec3 lightDirection, int angle);
     
     glm::vec3 direction;
-    float lightAngle;
     // float exponent;
     
 };
@@ -223,11 +223,6 @@ public:
     ofColor rayTrace(const Ray &ray);
     void drawGrid();
     void drawAxis(glm::vec3 position);
-    bool mouseToDragPlane(int x, int y, glm::vec3 &point);
-    bool objSelected() { return (selected.size() ? true : false ); };
-    void printChannels(SceneObject *);
-    glm::vec3 linearAnimation(glm::vec3 key1, glm::vec3 key2);
-    glm::vec3 easeInOutAnimation(glm::vec3 key1, glm::vec3 key2);
     
 //    ofColor lambert(const glm::vec3 &p, const glm::vec3 &norm, const ofColor diffuse);
     bool inShadow(const Ray &ray);
@@ -262,7 +257,13 @@ public:
     ofxIntSlider spotlightAngle;
     ofxPanel gui;
     
-    // Translating an object
+    // OBJECT CREATION, DELETION, AND TRANSLATION
+    bool mouseToDragPlane(int x, int y, glm::vec3 &point);
+    bool objSelected() { return (selected.size() ? true : false ); };
+    void printChannels(SceneObject *);
+    void addSphere();
+    void deleteSphere(SceneObject * obj);
+    void addLight();
     vector<SceneObject *> selected;
     bool bDrag = false;
     bool bAltKeyDown = false;
@@ -272,6 +273,8 @@ public:
     glm::vec3 lastPoint;
     
     // KEYFRAME ANIMATION
+    glm::vec3 linearAnimation(glm::vec3 key1, glm::vec3 key2);
+    glm::vec3 easeInOutAnimation(glm::vec3 key1, glm::vec3 key2);
     bool bPlayback = false;
     int currentFrame = 1;
     int frameMax = 200;

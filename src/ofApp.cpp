@@ -1,10 +1,10 @@
 #include "ofApp.h"
 
-bool SpotLight::isIlluminated(glm::vec3 lightDirection) {
+bool SpotLight::isIlluminated(glm::vec3 lightDirection, int angle) {
     
     glm::vec3 spotDirection = glm::normalize(direction);
     float pointAngle = glm::dot(spotDirection, -lightDirection);
-    if (pointAngle >= glm::radians(lightAngle)) return true;
+    if (pointAngle >= glm::radians((float)angle)) return true;
     return false;
 }
 
@@ -60,10 +60,10 @@ void ofApp::setup(){
     
     // GUI Setup
     gui.setup();
-    gui.add(ambientPercent.setup("Ambient Percentage: ", 0.08, 0, 1));
-    gui.add(lightIntensity.setup("Light Intensity: ", 0.60, 0, 5));
-    gui.add(phongExponent.setup("Phong Exponent: ", 10, 10, 1000));
-    gui.add(spotlightAngle.setup("Spotlight Angle: ", 45, 1, 89));
+    gui.add(ambientPercent.setup("Ambient Percentage: ", 0.1, 0, 1));
+    gui.add(lightIntensity.setup("Light Intensity: ", 0.8, 0, 5));
+    gui.add(phongExponent.setup("Phong Exponent: ", 50, 10, 1000));
+    gui.add(spotlightAngle.setup("Spotlight Angle: ", 50, 1, 89));
     
     ofSetBackgroundColor(ofColor::black);
     mainCam.setDistance(30);
@@ -75,27 +75,27 @@ void ofApp::setup(){
     
     Light * light1 = new PointLight(glm::vec3(4, 6, 4), lightIntensity, ofColor::white);
     Light * light2 = new PointLight(glm::vec3(-4, 6, 4), lightIntensity, ofColor::white);
-    Light * spotlight = new SpotLight(glm::vec3(0, 6, 0), lightIntensity, glm::vec3(0, -1, 0), spotlightAngle, ofColor::white);
+    Light * spotlight = new SpotLight(glm::vec3(0, 6, 3), lightIntensity, glm::vec3(0, -1, -.5), spotlightAngle, ofColor::white);
     
     scene.push_back(new Sphere(glm::vec3(-1, 0, 0), 2.0, ofColor::blue));
     scene.push_back(new Sphere(glm::vec3(1, 0, -4), 2.0, ofColor::lightGreen));
     scene.push_back(new Sphere(glm::vec3(0, 0, 2), 1.0, ofColor::red));
     scene.push_back(new Plane(glm::vec3(0, -2, 0), glm::vec3(0, 1, 0), ofColor::gray));
-    scene.push_back(light1);
-    scene.push_back(light2);
-//    scene.push_back(spotlight);
+//    scene.push_back(light1);
+//    scene.push_back(light2);
+    scene.push_back(spotlight);
     
-    lights.push_back(light1);
-    lights.push_back(light2);
-//    lights.push_back(spotlight);
+//    lights.push_back(light1);
+//    lights.push_back(light2);
+    lights.push_back(spotlight);
     
     ofSetFrameRate(60);
     key1 = glm::vec3(-8, 0, -8);
     key2 = glm::vec3(-1, 0, 0);
-    
+
     key3 = glm::vec3(8, 0, -8);
     key4 = glm::vec3(1, 0, -4);
-    
+
     key5 = glm::vec3(0, 8, 2);
     key6 = glm::vec3(0, 0, 2);
 }
@@ -105,12 +105,11 @@ void ofApp::update(){
     
     if (bPlayback) {
         currentFrame++;
-        if (currentFrame >= frameMax) currentFrame = frameMin;
-        // selected[0]->position = linearAnimation();
+        if (currentFrame > frameMax) currentFrame = frameMin;
         scene[0]->position = easeInOutAnimation(key1, key2);
         scene[1]->position = easeInOutAnimation(key3, key4);
-        scene[2]->position = easeInOutAnimation(key5, key6);
-        render();
+        scene[2]->position = linearAnimation(key5, key6);
+        // render();
     }
 }
 
@@ -162,7 +161,7 @@ void ofApp::draw(){
     
     ofSetColor(ofColor::white);
     renderCam.draw();
-    // render();
+     render();
     
     if (bShowGrid) { drawGrid(); }
     if (bShowImage) {
@@ -185,32 +184,34 @@ void ofApp::render(){
             float u = iNudge / image.getWidth();
             float v = (image.getHeight() - jNudge) / image.getHeight();
             
+            // ANTI-ALIASING METHOD
             // Use a 4x4 grid for anti aliasing
-            int nSquares = 2;
-            ofColor colorSum = ofColor::black;
-            for (float x = -(nSquares - 1.0f) / 2.0f; x <= (nSquares - 1.0f) / 2.0f; x++) {
-                for (float y = -(nSquares - 1.0f) / 2.0f; y <= (nSquares - 1.0f) / 2.0f; y++) {
-                    // cout << u << x << image.getWidth() << endl;
-                    float uTemp = u + (x / (image.getWidth() * nSquares));
-                    float vTemp = v + (y / (image.getHeight() * nSquares));
-                    // cout << "(" << uTemp << ", " << vTemp << ")" << endl;
-                    Ray currentRay = renderCam.getRay(uTemp, vTemp);
-                    // currentRay.draw(150);
-                    colorSum += (rayTrace(currentRay) / (nSquares * nSquares));
-                }
-            }
-            // colorSum = colorSum / (nSquares * nSquares);
-            image.setColor(i, j, colorSum);
+//            int nSquares = 2;
+//            ofColor colorSum = ofColor::black;
+//            for (float x = -(nSquares - 1.0f) / 2.0f; x <= (nSquares - 1.0f) / 2.0f; x++) {
+//                for (float y = -(nSquares - 1.0f) / 2.0f; y <= (nSquares - 1.0f) / 2.0f; y++) {
+//                    // cout << u << x << image.getWidth() << endl;
+//                    float uTemp = u + (x / (image.getWidth() * nSquares));
+//                    float vTemp = v + (y / (image.getHeight() * nSquares));
+//                    // cout << "(" << uTemp << ", " << vTemp << ")" << endl;
+//                    Ray currentRay = renderCam.getRay(uTemp, vTemp);
+//                    // currentRay.draw(150);
+//                    colorSum += (rayTrace(currentRay) / (nSquares * nSquares));
+//                }
+//            }
+//            // colorSum = colorSum / (nSquares * nSquares);
+//            image.setColor(i, j, colorSum);
             
-            
-//            Ray currentRay = renderCam.getRay(u, v);
-//            // currentRay.draw(150);
-//            ofColor colorToDraw = rayTrace(currentRay); // default black for when it does not hit
-//            image.setColor(i, j, colorToDraw);
+            // ALIASING METHOD
+            Ray currentRay = renderCam.getRay(u, v);
+            ofColor colorToDraw = rayTrace(currentRay); // default black for when it does not hit
+            image.setColor(i, j, colorToDraw);
         }
     }
     image.update();
-    string fileName = "Spotlight.jpg";
+    // string fileName = "spotlight" + to_string(currentFrame) + ".jpg";
+    // cout << fileName << endl;
+    string fileName = "finalSpotlight.jpg";
     image.save(fileName, OF_IMAGE_QUALITY_HIGH);
     
 }
@@ -219,7 +220,7 @@ ofColor ofApp::rayTrace(const Ray &ray) {
     ofColor colorToDraw = ofColor::black; // default black for when it does not hit
     float closestObjDistance = std::numeric_limits<float>::infinity();
     glm::vec3 pt, normal;
-    for (int i = 0; i < scene.size() - lights.size(); i++) {
+    for (int i = 0; i < scene.size(); i++) {
         SceneObject* obj = scene[i];
         bool hit = obj->intersect(ray, pt, normal);
         if (hit) {
@@ -236,8 +237,8 @@ ofColor ofApp::rayTrace(const Ray &ray) {
 
 bool ofApp::inShadow (const Ray &ray) {
     glm::vec3 pt, normal;
-    for (int i = 0; i < scene.size() - lights.size(); i++) {
-        if (scene[i]->intersect(ray, pt, normal)) return true;
+    for (int i = 0; i < scene.size(); i++) {
+        if (scene[i]->intersect(ray, pt, normal) && !scene[i]->isLight) return true;
     }
     return false;
 }
@@ -270,7 +271,7 @@ ofColor ofApp::phong(const glm::vec3 &p, const glm::vec3 &norm, const ofColor di
         Ray lightRay = Ray(epsilonDistance, l);
         
         // Check whether the point is in shadow or not and if it's illuminated by the type of light
-        if (!inShadow(lightRay) && light->isIlluminated(l)) {
+        if (!inShadow(lightRay) && light->isIlluminated(l, spotlightAngle)) {
             // Solve for the bisector
             glm::vec3 b = (v + l) / glm::length(v + l);
             ofColor lambert = max(float(0.0), glm::dot(norm, l)) * lightIntensity * diffuse;
@@ -300,7 +301,14 @@ void ofApp::keyReleased(int key){
         case ' ':
             bPlayback = !bPlayback;
             break;
-        case 'b':
+        case OF_KEY_BACKSPACE:
+            if (objSelected()) deleteSphere(selected[0]);
+            break;
+        case 's':
+            addSphere();
+            break;
+        case 'l':
+            addLight();
             break;
         case 'f':
             ofToggleFullscreen();
@@ -339,6 +347,27 @@ void ofApp::keyReleased(int key){
             render();
             break;
     }
+}
+
+void ofApp::addSphere() {
+    SceneObject * sphere = new Sphere(glm::vec3(0, 0, 0), ofRandom(0.5, 2.5), ofColor(ofRandom(0, 255), ofRandom(0, 255), ofRandom(0, 255)));
+    sphere->index = scene.size();
+    scene.push_back(sphere);
+}
+
+void ofApp::deleteSphere(SceneObject * obj) {
+    if (obj->isLight) lights.erase(lights.begin() + lights.size() - 1);
+    scene.erase(scene.begin() + obj->index);
+    for (int i = obj->index; i <= scene.size() - 1; i++) {
+        scene[i]->index--;
+    }
+}
+
+void ofApp::addLight() {
+    Light * light = new PointLight(glm::vec3(0, 6, 0), lightIntensity, ofColor::white);
+    light->index = scene.size();
+    scene.push_back(light);
+    lights.push_back(light);
 }
 
 //--------------------------------------------------------------
