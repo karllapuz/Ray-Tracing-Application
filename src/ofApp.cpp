@@ -81,14 +81,15 @@ void ofApp::setup(){
     scene.push_back(new Sphere(glm::vec3(1, 0, -4), 2.0, ofColor::lightGreen));
     scene.push_back(new Sphere(glm::vec3(0, 0, 2), 1.0, ofColor::red));
     scene.push_back(new Plane(glm::vec3(0, -2, 0), glm::vec3(0, 1, 0), ofColor::gray));
-//    scene.push_back(light1);
-//    scene.push_back(light2);
-    scene.push_back(spotlight);
+    scene.push_back(light1);
+    scene.push_back(light2);
+//    scene.push_back(spotlight);
     
-//    lights.push_back(light1);
-//    lights.push_back(light2);
-    lights.push_back(spotlight);
+    lights.push_back(light1);
+    lights.push_back(light2);
+//    lights.push_back(spotlight);
     
+    // RED, BLUE, AND GREEN SPHERES ANIMATED
     ofSetFrameRate(60);
     key1 = glm::vec3(-8, 0, -8);
     key2 = glm::vec3(-1, 0, 0);
@@ -106,10 +107,11 @@ void ofApp::update(){
     if (bPlayback) {
         currentFrame++;
         if (currentFrame > frameMax) currentFrame = frameMin;
+        // RED, BLUE, AND GREEN SPHERES ANIMATED
         scene[0]->position = easeInOutAnimation(key1, key2);
         scene[1]->position = easeInOutAnimation(key3, key4);
         scene[2]->position = linearAnimation(key5, key6);
-        // render();
+        render();
     }
 }
 
@@ -185,27 +187,27 @@ void ofApp::render(){
             float v = (image.getHeight() - jNudge) / image.getHeight();
             
             // ANTI-ALIASING METHOD
-            // Use a 4x4 grid for anti aliasing
-//            int nSquares = 2;
-//            ofColor colorSum = ofColor::black;
-//            for (float x = -(nSquares - 1.0f) / 2.0f; x <= (nSquares - 1.0f) / 2.0f; x++) {
-//                for (float y = -(nSquares - 1.0f) / 2.0f; y <= (nSquares - 1.0f) / 2.0f; y++) {
-//                    // cout << u << x << image.getWidth() << endl;
-//                    float uTemp = u + (x / (image.getWidth() * nSquares));
-//                    float vTemp = v + (y / (image.getHeight() * nSquares));
-//                    // cout << "(" << uTemp << ", " << vTemp << ")" << endl;
-//                    Ray currentRay = renderCam.getRay(uTemp, vTemp);
-//                    // currentRay.draw(150);
-//                    colorSum += (rayTrace(currentRay) / (nSquares * nSquares));
-//                }
-//            }
-//            // colorSum = colorSum / (nSquares * nSquares);
-//            image.setColor(i, j, colorSum);
+            // Use a 2x2 grid for anti aliasing
+            int nSquares = 2;
+            ofColor colorSum = ofColor::black;
+            for (float x = -(nSquares - 1.0f) / 2.0f; x <= (nSquares - 1.0f) / 2.0f; x++) {
+                for (float y = -(nSquares - 1.0f) / 2.0f; y <= (nSquares - 1.0f) / 2.0f; y++) {
+                    // cout << u << x << image.getWidth() << endl;
+                    float uTemp = u + (x / (image.getWidth() * nSquares));
+                    float vTemp = v + (y / (image.getHeight() * nSquares));
+                    // cout << "(" << uTemp << ", " << vTemp << ")" << endl;
+                    Ray currentRay = renderCam.getRay(uTemp, vTemp);
+                    // currentRay.draw(150);
+                    colorSum += (rayTrace(currentRay) / (nSquares * nSquares));
+                }
+            }
+            // colorSum = colorSum / (nSquares * nSquares);
+            image.setColor(i, j, colorSum);
             
             // ALIASING METHOD
-            Ray currentRay = renderCam.getRay(u, v);
-            ofColor colorToDraw = rayTrace(currentRay); // default black for when it does not hit
-            image.setColor(i, j, colorToDraw);
+//            Ray currentRay = renderCam.getRay(u, v);
+//            ofColor colorToDraw = rayTrace(currentRay); // default black for when it does not hit
+//            image.setColor(i, j, colorToDraw);
         }
     }
     image.update();
